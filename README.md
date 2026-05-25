@@ -2,6 +2,10 @@
 
 [![CI](https://github.com/NguyenIslandBoy/customer-journey-anomaly-detector/actions/workflows/ci.yml/badge.svg)](https://github.com/NguyenIslandBoy/customer-journey-anomaly-detector/actions/workflows/ci.yml)
 
+![traffic-spike](../customer-journey-anomaly-detector/img/traffic-spike.png)
+![conversion-collapse](../customer-journey-anomaly-detector/img/conversion-collapse.png)
+![untagged-traffic-surge](../customer-journey-anomaly-detector/img/untagged-traffic-surge.png)
+
 A production-grade anomaly detection pipeline for GA4 marketing data,
 built on the Google Merchandise Store public BigQuery dataset.
 
