@@ -1,0 +1,9 @@
+credentials.json
+.env
+data/raw/
+data/processed/
+output/
+__pycache__/
+*.pyc
+.venv
+.pytest_cache
