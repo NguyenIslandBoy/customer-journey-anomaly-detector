@@ -3,8 +3,7 @@ google-auth==2.35.0
 pandas==2.2.3
 pyarrow==17.0.0
 python-dotenv==1.0.1
-streamlit==1.39.0
+streamlit>=1.39.0
 plotly>=5.24.1
 pytest>=8.3.3
 db-dtypes==1.6.0
-streamlit==1.57.0
