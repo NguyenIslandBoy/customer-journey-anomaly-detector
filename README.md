@@ -1,5 +1,7 @@
 # Customer Journey Anomaly Detector
 
+[![CI](https://github.com/NguyenIslandBoy/customer-journey-anomaly-detector/actions/workflows/ci.yml/badge.svg)](https://github.com/NguyenIslandBoy/customer-journey-anomaly-detector/actions/workflows/ci.yml)
+
 A production-grade anomaly detection pipeline for GA4 marketing data,
 built on the Google Merchandise Store public BigQuery dataset.
 
