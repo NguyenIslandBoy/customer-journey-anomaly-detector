@@ -1,0 +1,13 @@
+version: 2
+
+sources:
+  - name: ga4
+    description: >
+      Google's public GA4 obfuscated sample (Google Merchandise Store),
+      2020-11-01 to 2021-01-31, one sharded table per day. Location US.
+    database: bigquery-public-data
+    schema: ga4_obfuscated_sample_ecommerce
+    tables:
+      - name: events
+        identifier: events_*
+        description: Wildcard over the daily events_YYYYMMDD shards.
