@@ -1,0 +1,6 @@
+# dbt layer only (dbt/). Install alongside requirements.txt:
+#   pip install -r requirements.txt -r requirements-dbt.txt
+# Exact versions resolved together with requirements.txt and checked with
+# `pip check` (google-cloud-bigquery stays at the 3.25.0 pin).
+dbt-core==1.11.15
+dbt-bigquery==1.11.1

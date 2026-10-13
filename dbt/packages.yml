@@ -1,0 +1,5 @@
+# Pinned to an exact tag. Installed from git rather than hub.getdbt.com so it
+# resolves wherever GitHub is reachable.
+packages:
+  - git: "https://github.com/dbt-labs/dbt-utils.git"
+    revision: "1.4.1"

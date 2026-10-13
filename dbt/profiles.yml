@@ -1,0 +1,21 @@
+# Environment variables only. No secrets live in this file.
+#   BQ_PROJECT_ID        GCP project that runs the jobs and owns the dataset
+#   BQ_CREDENTIALS_PATH  service-account keyfile (gitignored, never committed)
+#   DBT_DATASET          target dataset (default cja_dbt)
+#   BQ_LOCATION          must stay US: the public GA4 dataset is in US and
+#                        BigQuery cannot read across locations
+cja:
+  target: dev
+  outputs:
+    dev:
+      type: bigquery
+      method: service-account
+      project: "{{ env_var('BQ_PROJECT_ID') }}"
+      keyfile: "{{ env_var('BQ_CREDENTIALS_PATH') }}"
+      dataset: "{{ env_var('DBT_DATASET', 'cja_dbt') }}"
+      location: "{{ env_var('BQ_LOCATION', 'US') }}"
+      threads: 4
+      # Cost cap: any single query that would bill more than 5 GB fails.
+      maximum_bytes_billed: 5000000000
+      priority: interactive
+      job_retries: 1

@@ -7,3 +7,9 @@ __pycache__/
 *.pyc
 .venv
 .pytest_cache
+venv/
+data/raw_dbt/
+dbt/target/
+dbt/logs/
+dbt/dbt_packages/
+dbt/.user.yml
