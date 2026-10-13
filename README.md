@@ -52,7 +52,7 @@ customer-journey-anomaly-detector/
 │   └── run_pipeline.py           # Pipeline orchestrator
 ├── dashboard/
 │   └── app.py                    # Streamlit dashboard
-├── tests/                        # Pytest suite (22 tests)
+├── tests/                        # Pytest suite (28 tests)
 ├── output/                       # alerts.json written here
 └── data/
     ├── raw/                      # BigQuery exports
@@ -87,8 +87,11 @@ cp .env.example .env
 # Full run (extracts from BigQuery + processes + detects)
 python -m src.run_pipeline
 
-# Skip extraction (use existing data/raw/ files)
-python -m src.run_pipeline  # edit skip_extract=True in run_pipeline.py
+# Skip extraction (reuse existing data/raw/ files)
+python -m src.run_pipeline --skip-extract
+
+# Extraction source: sql (default) runs the queries in sql/
+python -m src.run_pipeline --source sql
 ```
 
 ### Run Dashboard
@@ -138,7 +141,8 @@ Each layer is independently testable and replaceable. The Streamlit dashboard re
 
 ## Tests
 
-22 tests across three test files. Each detector is tested with:
+28 tests across four test files: 6 for the CLI flags (`tests/test_cli.py`,
+mocked, no network) and 22 for the detectors. Each detector is tested with:
 - Stable series producing zero alerts
 - Known anomaly injected at a specific date
 - Low-volume filter behaviour

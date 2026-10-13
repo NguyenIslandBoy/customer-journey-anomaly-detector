@@ -1,10 +1,14 @@
+import argparse
 import time
 from src.extract import extract_all
 from src.process import process_all
 from src.alert import build_alerts
 
 
-def run_pipeline(skip_extract: bool = False) -> None:
+SOURCES = ("sql", "dbt")
+
+
+def run_pipeline(skip_extract: bool = False, source: str = "sql") -> None:
     """
     Orchestrate the full pipeline:
         extract → process → detect → alert
@@ -13,7 +17,14 @@ def run_pipeline(skip_extract: bool = False) -> None:
         skip_extract: if True, skip BigQuery extraction and use
                       existing data/raw/ files. Useful for development
                       when you don't want to re-query BigQuery on every run.
+        source:       where extraction reads from. "sql" runs the legacy
+                      queries in sql/. "dbt" is not implemented yet.
     """
+    if source not in SOURCES:
+        raise ValueError(f"Unknown source {source!r}; expected one of {SOURCES}")
+    if source == "dbt":
+        raise NotImplementedError("--source dbt is not implemented yet")
+
     start = time.time()
     print("=" * 55)
     print("  CUSTOMER JOURNEY ANOMALY DETECTOR — PIPELINE START")
@@ -44,6 +55,29 @@ def run_pipeline(skip_extract: bool = False) -> None:
     print("=" * 55)
 
 
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        prog="python -m src.run_pipeline",
+        description="Extract, process, detect and alert.",
+    )
+    parser.add_argument(
+        "--skip-extract",
+        action="store_true",
+        help="reuse existing data/raw/ files instead of querying BigQuery",
+    )
+    parser.add_argument(
+        "--source",
+        choices=SOURCES,
+        default="sql",
+        help="extraction source (default: sql)",
+    )
+    return parser.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> None:
+    args = parse_args(argv)
+    run_pipeline(skip_extract=args.skip_extract, source=args.source)
+
+
 if __name__ == "__main__":
-    # Pass skip_extract=True during development to avoid re-querying BigQuery
-    run_pipeline(skip_extract=True)
+    main()
