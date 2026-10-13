@@ -6,8 +6,9 @@
 ![conversion-collapse](./img/conversion-collapse.png)
 ![untagged-traffic-surge](./img/untagged-traffic-surge.png)
 
-A production-grade anomaly detection pipeline for GA4 marketing data,
-built on the Google Merchandise Store public BigQuery dataset.
+A batch anomaly detection pipeline for GA4 marketing data, built on the
+Google Merchandise Store public BigQuery dataset (a fixed sample,
+2020-11-01 to 2021-01-31). It runs on demand; nothing is scheduled.
 
 Monitors three operational signals that matter to any marketing or
 analytics team:
@@ -73,48 +74,51 @@ customer-journey-anomaly-detector/
 ## Setup
 
 ### Prerequisites
-- Python 3.10+
+- Python 3.11 or 3.12 (CI uses 3.11). Python 3.13 does not work:
+  `pyarrow==17.0.0` in `requirements.txt` has no wheel for it.
 - Google Cloud project with BigQuery API enabled
 - Service account with `BigQuery Data Viewer` and `BigQuery Job User` roles
+  (the dbt layer also needs `BigQuery Data Editor` on its own dataset; see
+  [dbt layer](#dbt-layer))
 
 ### Installation
 
-```bash
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-pip install -r requirements.txt
+```powershell
+py -3.11 -m venv venv   # or py -3.12
+.\venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
 ### Configuration
 
-```bash
-cp .env.example .env
+```powershell
+Copy-Item .env.example .env
 # Edit .env with your GCP project ID and credentials path
 ```
 
 ### Run Pipeline
 
-```bash
+```powershell
 # Full run (extracts from BigQuery + processes + detects)
-python -m src.run_pipeline
+.\venv\Scripts\python.exe -m src.run_pipeline
 
 # Skip extraction (reuse existing data/raw/ files)
-python -m src.run_pipeline --skip-extract
+.\venv\Scripts\python.exe -m src.run_pipeline --skip-extract
 
-# Extraction source: sql (default) runs the queries in sql/
-python -m src.run_pipeline --source sql
+# Extraction source: sql (default) runs the queries in sql/;
+# dbt reads the dbt marts (see "dbt layer")
+.\venv\Scripts\python.exe -m src.run_pipeline --source sql
 ```
 
 ### Run Dashboard
 
-```bash
-streamlit run dashboard/app.py
+```powershell
+.\venv\Scripts\python.exe -m streamlit run dashboard/app.py
 ```
 
 ### Run Tests
 
-```bash
-pytest tests/ -v
+```powershell
+.\venv\Scripts\python.exe -m pytest tests\ -v
 ```
 
 ## Detection Logic
@@ -131,7 +135,7 @@ Computes the daily site-wide share of users with a `session_start` whose acquisi
 ## Key Design Decisions
 
 **Why relative drop for CVR, not Z-score?**
-Conversion rates are proportions bounded between 0 and 1, often right-skewed with small absolute values. A 40% relative drop has a clear business meaning; a Z-score on a proportion series is noisier and harder to explain to stakeholders.
+Conversion rates are proportions bounded between 0 and 1, often right-skewed with small absolute values. A 60% relative drop (the threshold used here) has a clear business meaning; a Z-score on a proportion series is noisier and harder to explain to stakeholders.
 
 **Why different rolling windows (14 vs 21 days)?**
 Session volume changes day-to-day. Direct traffic share is a slower-moving structural metric - a longer window gives a more stable baseline and avoids flagging normal weekly seasonality.
@@ -271,6 +275,6 @@ the detectors. Each detector is tested with:
 - Alert schema validation
 - Severity threshold boundaries tested directly on `_build_alert`
 
-```bash
-pytest tests/ -v
+```powershell
+.\venv\Scripts\python.exe -m pytest tests\ -v
 ```
