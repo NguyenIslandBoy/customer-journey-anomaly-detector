@@ -1,11 +1,8 @@
 import argparse
 import time
-from src.extract import extract_all
+from src.extract import SOURCES, extract_all
 from src.process import process_all
 from src.alert import build_alerts
-
-
-SOURCES = ("sql", "dbt")
 
 
 def run_pipeline(skip_extract: bool = False, source: str = "sql") -> None:
@@ -18,12 +15,11 @@ def run_pipeline(skip_extract: bool = False, source: str = "sql") -> None:
                       existing data/raw/ files. Useful for development
                       when you don't want to re-query BigQuery on every run.
         source:       where extraction reads from. "sql" runs the legacy
-                      queries in sql/. "dbt" is not implemented yet.
+                      queries in sql/. "dbt" reads the dbt marts, which
+                      must already be built (dbt build).
     """
     if source not in SOURCES:
         raise ValueError(f"Unknown source {source!r}; expected one of {SOURCES}")
-    if source == "dbt":
-        raise NotImplementedError("--source dbt is not implemented yet")
 
     start = time.time()
     print("=" * 55)
@@ -33,8 +29,8 @@ def run_pipeline(skip_extract: bool = False, source: str = "sql") -> None:
     if skip_extract:
         print("\n[1/3] Extraction skipped (using existing raw data)")
     else:
-        print("\n[1/3] Extracting data from BigQuery...")
-        extract_all()
+        print(f"\n[1/3] Extracting data from BigQuery (source: {source})...")
+        extract_all(source=source)
 
     print("\n[2/3] Processing raw data...")
     process_all()

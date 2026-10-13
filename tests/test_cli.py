@@ -42,12 +42,12 @@ def test_unknown_source_rejected(mocked_stages):
         rp.parse_args(["--source", "csv"])
 
 
-def test_dbt_source_not_implemented_yet(mocked_stages):
+@pytest.mark.parametrize("source", ["sql", "dbt"])
+def test_source_passed_to_extraction(mocked_stages, source):
     extract, process, alerts = mocked_stages
-    with pytest.raises(NotImplementedError):
-        rp.main(["--source", "dbt"])
-    extract.assert_not_called()
-    process.assert_not_called()
+    rp.main(["--source", source])
+    extract.assert_called_once_with(source=source)
+    process.assert_called_once()
 
 
 def test_run_pipeline_signature_still_works(mocked_stages):
