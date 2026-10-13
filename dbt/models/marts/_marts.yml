@@ -1,0 +1,85 @@
+version: 2
+
+models:
+  - name: mart_channel_performance_daily
+    description: >
+      Daily users, sessions and purchasers by acquisition source and medium.
+      Built over every GA4 event so it reproduces the legacy
+      conversion_rate_by_source extract row for row, including combinations
+      with no session_start (users = 0). Source and medium are first-user
+      acquisition, not session-level attribution.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [event_date, source, medium]
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "purchasers <= users"
+          config:
+            severity: warn
+    columns:
+      - name: event_date
+        data_tests:
+          - not_null
+      - name: source
+        description: First-user acquisition source (GA4 traffic_source.source), not the session's source.
+        data_tests:
+          - not_null
+      - name: medium
+        description: First-user acquisition medium (GA4 traffic_source.medium), not the session's medium.
+        data_tests:
+          - not_null
+      - name: users
+        description: >
+          Distinct user_pseudo_id with a session_start. This is a user count;
+          it is what the legacy pipeline calls "sessions".
+      - name: session_count
+        description: Distinct session_key with a session_start. True sessions.
+      - name: purchasers
+        description: >
+          Distinct user_pseudo_id with a purchase. Not required to have a
+          session_start in the same row, as in the legacy query, so it can
+          exceed users (warn-level test; none in the sample as of 2026-10-13).
+      - name: user_conversion_rate
+        description: >
+          purchasers / users, null when users = 0. The legacy
+          "conversion_rate".
+
+  - name: mart_tracking_quality_daily
+    description: >
+      Daily site-wide tracking quality. total_users, direct_users and
+      direct_share reproduce the legacy direct_untagged_traffic extract
+      (session_start events only).
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [event_date]
+    columns:
+      - name: event_date
+        data_tests:
+          - not_null
+      - name: total_users
+        description: Distinct users with a session_start. The legacy "total_sessions".
+      - name: direct_users
+        description: Distinct session_start users with acquisition medium '(none)'. The legacy "direct_sessions".
+      - name: direct_share
+        description: direct_users / total_users.
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 1
+      - name: data_deleted_users
+        description: >
+          Distinct session_start users with acquisition source
+          '(data deleted)'. A GA4 obfuscation label, not a tracking error.
+      - name: not_set_users
+        description: Distinct session_start users with source or medium '(not set)'.
+      - name: purchase_events
+        description: Purchase events on the day.
+      - name: purchase_events_missing_transaction_id
+        description: Purchase events whose transaction_id is null, empty or '(not set)'.
+      - name: purchase_events_duplicate_transaction_id
+        description: >
+          Purchase events whose transaction_id already appeared on an earlier
+          purchase event in the shard range (every occurrence after the first).
