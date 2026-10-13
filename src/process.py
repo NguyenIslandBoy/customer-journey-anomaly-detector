@@ -5,9 +5,9 @@ RAW_DIR = Path(__file__).parent.parent / "data" / "raw"
 PROCESSED_DIR = Path(__file__).parent.parent / "data" / "processed"
 PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
 
-# Minimum daily sessions for a source/medium to be included in detection.
+# Minimum daily users for a source/medium to be included in detection.
 # Below this, variance is too high to distinguish signal from noise.
-MIN_SESSIONS = 30
+MIN_USERS = 30
 
 
 def parse_event_date(df: pd.DataFrame) -> pd.DataFrame:
@@ -29,12 +29,12 @@ def process_traffic_by_source() -> pd.DataFrame:
     df = parse_event_date(df)
     df = filter_other(df)
 
-    # Drop source/medium combos that never exceed MIN_SESSIONS on any day.
+    # Drop source/medium combos that never exceed MIN_USERS on any day.
     # These are too low-volume for reliable anomaly detection.
-    max_sessions = df.groupby(["source", "medium"])["sessions"].transform("max")
+    max_users = df.groupby(["source", "medium"])["users"].transform("max")
     before = len(df)
-    df = df[max_sessions >= MIN_SESSIONS].reset_index(drop=True)
-    print(f"    Retained {len(df)}/{before} rows after min_sessions filter")
+    df = df[max_users >= MIN_USERS].reset_index(drop=True)
+    print(f"    Retained {len(df)}/{before} rows after min_users filter")
 
     df = df.sort_values(["source", "medium", "event_date"]).reset_index(drop=True)
     return df
@@ -45,11 +45,11 @@ def process_conversion_rate_by_source() -> pd.DataFrame:
     df = parse_event_date(df)
     df = filter_other(df)
 
-    # Same volume filter — only sources that regularly see >= MIN_SESSIONS.
-    max_sessions = df.groupby(["source", "medium"])["sessions"].transform("max")
+    # Same volume filter — only sources that regularly see >= MIN_USERS.
+    max_users = df.groupby(["source", "medium"])["users"].transform("max")
     before = len(df)
-    df = df[max_sessions >= MIN_SESSIONS].reset_index(drop=True)
-    print(f"    Retained {len(df)}/{before} rows after min_sessions filter")
+    df = df[max_users >= MIN_USERS].reset_index(drop=True)
+    print(f"    Retained {len(df)}/{before} rows after min_users filter")
 
     # Ensure conversion_rate is clean (SAFE_DIVIDE already handles nulls,
     # but enforce float and fill any remaining NaN as 0).

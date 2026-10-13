@@ -53,35 +53,33 @@ def legacy_frames_from_marts(
     channel: pd.DataFrame, tracking: pd.DataFrame
 ) -> dict[str, pd.DataFrame]:
     """
-    Rebuild the three legacy extracts from the dbt marts, with the legacy
-    column names, order and event_date format.
+    Rebuild the three extracts of the sql mode from the dbt marts: same
+    files, column names, order and event_date format.
 
-    The marts use honest names. The pipeline keeps the legacy ones so the
-    detectors, tests and dashboard stay untouched: users is renamed to
-    "sessions", although it counts distinct users with a session_start,
-    not sessions (the marts' session_count is the real session count).
+    The only rename is user_conversion_rate -> conversion_rate. users,
+    total_users and direct_users already match the sql mode's columns; they
+    count distinct users with a session_start (the marts' session_count is
+    the real session count, and is not used by the pipeline).
     """
     channel = channel.assign(event_date=_yyyymmdd(channel["event_date"])).rename(
-        columns={"users": "sessions", "user_conversion_rate": "conversion_rate"}
+        columns={"user_conversion_rate": "conversion_rate"}
     )
-    tracking = tracking.assign(event_date=_yyyymmdd(tracking["event_date"])).rename(
-        columns={"total_users": "total_sessions", "direct_users": "direct_sessions"}
-    )
+    tracking = tracking.assign(event_date=_yyyymmdd(tracking["event_date"]))
 
-    # Legacy conversion SQL has no WHERE, so it keeps rows with sessions = 0
-    # (events but no session_start) and a null rate. Legacy traffic SQL reads
+    # The conversion SQL has no WHERE, so it keeps rows with users = 0
+    # (events but no session_start) and a null rate. The traffic SQL reads
     # session_start events only, so those rows never appear there.
     conversion = channel[
-        ["event_date", "source", "medium", "sessions", "purchasers", "conversion_rate"]
+        ["event_date", "source", "medium", "users", "purchasers", "conversion_rate"]
     ].sort_values(["event_date", "source", "medium"])
     traffic = channel.loc[
-        channel["sessions"] > 0, ["event_date", "source", "medium", "sessions"]
+        channel["users"] > 0, ["event_date", "source", "medium", "users"]
     ].sort_values(
-        ["event_date", "sessions", "source", "medium"],
+        ["event_date", "users", "source", "medium"],
         ascending=[True, False, True, True],
     )
     direct = tracking[
-        ["event_date", "total_sessions", "direct_sessions", "direct_share"]
+        ["event_date", "total_users", "direct_users", "direct_share"]
     ].sort_values("event_date")
 
     return {

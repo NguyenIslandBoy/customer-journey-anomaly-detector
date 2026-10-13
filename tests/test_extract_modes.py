@@ -5,20 +5,21 @@ import pytest
 
 from src import extract
 
-# Columns, order and dtypes of the legacy CSVs after pd.read_csv, recorded
-# from a real legacy extract on 2026-10-13. The dbt mode must reproduce them.
+# Columns, order and dtypes of the sql-mode CSVs after pd.read_csv, recorded
+# from a real extract on 2026-10-13 (columns renamed sessions -> users since).
+# The dbt mode must reproduce them.
 LEGACY_CONTRACT = {
     "traffic_by_source": {
         "event_date": "int64", "source": "object", "medium": "object",
-        "sessions": "int64",
+        "users": "int64",
     },
     "conversion_rate_by_source": {
         "event_date": "int64", "source": "object", "medium": "object",
-        "sessions": "int64", "purchasers": "int64", "conversion_rate": "float64",
+        "users": "int64", "purchasers": "int64", "conversion_rate": "float64",
     },
     "direct_untagged_traffic": {
-        "event_date": "int64", "total_sessions": "int64",
-        "direct_sessions": "int64", "direct_share": "float64",
+        "event_date": "int64", "total_users": "int64",
+        "direct_users": "int64", "direct_share": "float64",
     },
 }
 
@@ -108,29 +109,29 @@ def test_dbt_mode_writes_event_date_as_yyyymmdd(fake_bigquery, tmp_path):
     assert df["event_date"].tolist() == [20201101, 20201102]
 
 
-def test_dbt_mode_maps_users_to_legacy_sessions(fake_bigquery, tmp_path):
+def test_dbt_mode_maps_mart_columns(fake_bigquery, tmp_path):
     extract.extract_all(source="dbt", out_dir=tmp_path)
     cvr = pd.read_csv(tmp_path / "conversion_rate_by_source.csv")
     google = cvr[(cvr["source"] == "google") & (cvr["medium"] == "organic")].iloc[0]
-    assert google["sessions"] == 100
+    assert google["users"] == 100
     assert google["purchasers"] == 5
     assert google["conversion_rate"] == 0.05
     direct = pd.read_csv(tmp_path / "direct_untagged_traffic.csv")
-    assert direct["total_sessions"].tolist() == [140, 80]
-    assert direct["direct_sessions"].tolist() == [50, 20]
+    assert direct["total_users"].tolist() == [140, 80]
+    assert direct["direct_users"].tolist() == [50, 20]
 
 
 def test_dbt_mode_keeps_zero_user_rows_only_in_conversion(fake_bigquery, tmp_path):
-    """Legacy conversion SQL has no WHERE, so it keeps sessions = 0 rows with a
-    null rate; legacy traffic SQL filters session_start, so it never has them."""
+    """The conversion SQL has no WHERE, so it keeps users = 0 rows with a
+    null rate; the traffic SQL filters session_start, so it never has them."""
     extract.extract_all(source="dbt", out_dir=tmp_path)
     cvr = pd.read_csv(tmp_path / "conversion_rate_by_source.csv")
-    zero = cvr[cvr["sessions"] == 0]
+    zero = cvr[cvr["users"] == 0]
     assert len(zero) == 1
     assert zero["conversion_rate"].isna().all()
     traffic = pd.read_csv(tmp_path / "traffic_by_source.csv")
     assert len(traffic) == 2
-    assert (traffic["sessions"] > 0).all()
+    assert (traffic["users"] > 0).all()
 
 
 def test_unknown_source_rejected(fake_bigquery, tmp_path):

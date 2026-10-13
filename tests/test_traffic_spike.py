@@ -3,28 +3,28 @@ import pytest
 from src.detect.traffic_spike import detect_traffic_spikes
 
 
-def _base_series(sessions: int = 100, days: int = 30) -> pd.DataFrame:
+def _base_series(users: int = 100, days: int = 30) -> pd.DataFrame:
     """Generate a flat, stable time series for one source/medium."""
     dates = pd.date_range("2021-01-01", periods=days, freq="D")
     return pd.DataFrame({
         "event_date": dates,
         "source":     "google",
         "medium":     "organic",
-        "sessions":   sessions,
+        "users":      users,
     })
 
 
 def test_no_alerts_on_flat_series():
     """Stable flat series should produce zero alerts."""
-    df = _base_series(sessions=500, days=60)
+    df = _base_series(users=500, days=60)
     alerts = detect_traffic_spikes(df)
     assert len(alerts) == 0
 
 
 def test_detects_known_spike():
     """A 5x spike on day 20 should be flagged."""
-    df = _base_series(sessions=200, days=40)
-    df.loc[df.index == 19, "sessions"] = 1000  # day 20, 5x spike
+    df = _base_series(users=200, days=40)
+    df.loc[df.index == 19, "users"] = 1000  # day 20, 5x spike
     alerts = detect_traffic_spikes(df)
     assert len(alerts) >= 1
     flagged_dates = [a["detected_at"] for a in alerts]
@@ -39,7 +39,7 @@ def test_spike_severity_high():
     # Build a mock row with a known z-score above 4.0
     row = pd.Series({
         "event_date":    pd.Timestamp("2021-01-26"),
-        "sessions":      5000,
+        "users":         5000,
         "rolling_mean":  200.0,
         "rolling_std":   50.0,
         "z_score":       4.5,
@@ -56,7 +56,7 @@ def test_spike_severity_medium():
 
     row = pd.Series({
         "event_date":    pd.Timestamp("2021-01-26"),
-        "sessions":      800,
+        "users":         800,
         "rolling_mean":  200.0,
         "rolling_std":   50.0,
         "z_score":       3.5,
@@ -67,10 +67,10 @@ def test_spike_severity_medium():
 
 def test_no_alerts_before_window_complete():
     """No alerts should fire before the 14-day window is populated (days 1-14)."""
-    df = _base_series(sessions=100, days=20)
+    df = _base_series(users=100, days=20)
     # Inject spike on day 10 (index 9) — inside the first 14-day window
     # Rolling baseline is not yet complete here, so no alert should fire
-    df.loc[df.index == 9, "sessions"] = 5000
+    df.loc[df.index == 9, "users"] = 5000
     alerts = detect_traffic_spikes(df)
     flagged_dates = [a["detected_at"] for a in alerts]
     # Day 10 = 2021-01-10, must not be flagged
@@ -79,8 +79,8 @@ def test_no_alerts_before_window_complete():
 
 def test_alert_schema():
     """Every alert must contain all required keys with correct types."""
-    df = _base_series(sessions=200, days=40)
-    df.loc[df.index == 19, "sessions"] = 1500
+    df = _base_series(users=200, days=40)
+    df.loc[df.index == 19, "users"] = 1500
     alerts = detect_traffic_spikes(df)
     assert len(alerts) >= 1
 
@@ -99,10 +99,10 @@ def test_alert_schema():
 
 def test_multiple_sources_detected_independently():
     """Spikes in one source should not affect detection in another."""
-    df1 = _base_series(sessions=200, days=40)
-    df1.loc[df1.index == 19, "sessions"] = 1500  # spike in google/organic
+    df1 = _base_series(users=200, days=40)
+    df1.loc[df1.index == 19, "users"] = 1500  # spike in google/organic
 
-    df2 = _base_series(sessions=200, days=40)
+    df2 = _base_series(users=200, days=40)
     df2["source"] = "bing"
     df2["medium"] = "cpc"
     # No spike in bing/cpc

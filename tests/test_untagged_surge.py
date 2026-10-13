@@ -10,8 +10,8 @@ def _base_series(direct_share: float = 0.25, days: int = 50) -> pd.DataFrame:
     direct = int(total * direct_share)
     return pd.DataFrame({
         "event_date":      dates,
-        "total_sessions":  total,
-        "direct_sessions": direct,
+        "total_users":     total,
+        "direct_users":    direct,
         "direct_share":    direct_share,
     })
 
@@ -31,8 +31,8 @@ def test_detects_known_surge():
     shares = (rng.normal(loc=0.25, scale=0.01, size=50)).clip(0.1, 0.9).tolist()
     df = pd.DataFrame({
         "event_date":      dates,
-        "total_sessions":  2000,
-        "direct_sessions": [int(2000 * s) for s in shares],
+        "total_users":     2000,
+        "direct_users":    [int(2000 * s) for s in shares],
         "direct_share":    shares,
     })
     df.loc[df.index == 29, "direct_share"] = 0.70  # large surge on day 30
@@ -59,8 +59,8 @@ def test_alert_schema():
     shares = rng.normal(loc=0.25, scale=0.01, size=50).clip(0.1, 0.9).tolist()
     df = pd.DataFrame({
         "event_date":      dates,
-        "total_sessions":  2000,
-        "direct_sessions": [int(2000 * s) for s in shares],
+        "total_users":     2000,
+        "direct_users":    [int(2000 * s) for s in shares],
         "direct_share":    shares,
     })
     df.loc[df.index == 35, "direct_share"] = 0.80

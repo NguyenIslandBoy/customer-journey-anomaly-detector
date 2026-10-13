@@ -10,7 +10,7 @@ MIN_ROLLING_STD = 1.0    # prevents division by near-zero std on flat series
 
 def detect_traffic_spikes(df: pd.DataFrame = None) -> list[dict]:
     """
-    Detect days where session volume for a source/medium spikes
+    Detect days where user volume for a source/medium spikes
     abnormally above its 14-day rolling baseline.
 
     Args:
@@ -28,11 +28,11 @@ def detect_traffic_spikes(df: pd.DataFrame = None) -> list[dict]:
     for (source, medium), group in df.groupby(["source", "medium"]):
         group = group.sort_values("event_date").copy()
 
-        rolling = group["sessions"].rolling(window=ROLLING_WINDOW, min_periods=ROLLING_WINDOW)
+        rolling = group["users"].rolling(window=ROLLING_WINDOW, min_periods=ROLLING_WINDOW)
         group["rolling_mean"] = rolling.mean()
         group["rolling_std"]  = rolling.std().clip(lower=MIN_ROLLING_STD)
         group["z_score"]      = (
-            (group["sessions"] - group["rolling_mean"]) / group["rolling_std"]
+            (group["users"] - group["rolling_mean"]) / group["rolling_std"]
         )
 
         # Only evaluate rows where the rolling window is fully populated
@@ -54,7 +54,7 @@ def _build_alert(row: pd.Series, source: str, medium: str) -> dict:
         "detected_at":        str(row["event_date"].date()),
         "source":             source,
         "medium":             medium,
-        "metric_value":       int(row["sessions"]),
+        "metric_value":       int(row["users"]),
         "baseline_value":     round(float(row["rolling_mean"]), 1),
         "z_score":            z,
         "severity":           "high" if z >= 4.0 else "medium",
@@ -84,7 +84,7 @@ def _recommend(source: str, medium: str) -> str:
             "whether traffic is legitimate or bot-driven."
         )
     return (
-        "Unusual session spike detected. Investigate source/medium for campaign "
+        "Unusual user volume spike detected. Investigate source/medium for campaign "
         "errors, bot traffic, or tracking issues."
     )
 

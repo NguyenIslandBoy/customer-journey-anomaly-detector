@@ -1,8 +1,8 @@
 SELECT
     event_date,
-    COUNT(DISTINCT user_pseudo_id)                          AS total_sessions,
+    COUNT(DISTINCT user_pseudo_id)                          AS total_users,
     COUNT(DISTINCT CASE WHEN traffic_source.medium = '(none)'
-          THEN user_pseudo_id END)                          AS direct_sessions,
+          THEN user_pseudo_id END)                          AS direct_users,
     SAFE_DIVIDE(
         COUNT(DISTINCT CASE WHEN traffic_source.medium = '(none)'
               THEN user_pseudo_id END),

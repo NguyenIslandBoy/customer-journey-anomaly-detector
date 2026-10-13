@@ -5,7 +5,7 @@ PROCESSED_DIR = Path(__file__).parent.parent.parent / "data" / "processed"
 
 ROLLING_WINDOW    = 21   # longer window — direct share is a slow-moving metric
 Z_SCORE_THRESHOLD = 2.5  # lower than traffic spike — tracking failures are urgent
-MIN_ROLLING_STD   = 0.005  # minimum std for a proportion series (not sessions)
+MIN_ROLLING_STD   = 0.005  # minimum std for a proportion series (not a user count)
 
 
 def detect_untagged_surges(df: pd.DataFrame = None) -> list[dict]:

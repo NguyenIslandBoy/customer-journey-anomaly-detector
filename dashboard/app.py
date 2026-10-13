@@ -209,8 +209,7 @@ with tab1:
 with tab2:
     st.header("Traffic Spike Detection")
     st.caption(
-        "Daily users (the pipeline's `sessions` column) per acquisition source/medium "
-        "with 14-day rolling baseline. "
+        "Daily users per acquisition source/medium with 14-day rolling baseline. "
         "Flagged days exceed 3 standard deviations above the rolling mean."
     )
 
@@ -244,7 +243,7 @@ with tab2:
 
     # Compute rolling baseline for display
     series["rolling_mean"] = (
-        series["sessions"]
+        series["users"]
         .rolling(window=14, min_periods=14)
         .mean()
     )
@@ -264,7 +263,7 @@ with tab2:
     # User volume line
     fig.add_trace(go.Scatter(
         x=series["event_date"],
-        y=series["sessions"],
+        y=series["users"],
         mode="lines",
         name="Daily Users",
         line=dict(color="#636EFA", width=2),
@@ -284,7 +283,7 @@ with tab2:
     if not flagged_series.empty:
         fig.add_trace(go.Scatter(
             x=flagged_series["event_date"],
-            y=flagged_series["sessions"],
+            y=flagged_series["users"],
             mode="markers",
             name="Anomaly Flagged",
             marker=dict(color="#EF553B", size=10, symbol="x"),
