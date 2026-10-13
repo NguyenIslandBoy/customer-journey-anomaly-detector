@@ -1,6 +1,8 @@
 # Parity check: legacy SQL vs dbt marts
 
-**Run date:** 2026-10-13
+**Run date:** 2026-10-13, after renaming the pipeline's `sessions` columns to
+`users` (Task 8). The same check also passed earlier that day under the old
+names, with the same row counts and alerts.
 **Outcome:** PASS. Zero mismatching rows in all three extracts; identical alert lists.
 
 ## What was compared
@@ -9,8 +11,9 @@
 
 - `--source sql`: the legacy queries in `sql/`, written to `data/raw/`
 - `--source dbt`: the marts `mart_channel_performance_daily` and
-  `mart_tracking_quality_daily` in dataset `cja_dbt`, mapped back to the legacy
-  column names, written to `data/raw_dbt/`
+  `mart_tracking_quality_daily` in dataset `cja_dbt`, mapped to the sql mode's
+  columns (only `user_conversion_rate` is renamed, to `conversion_rate`),
+  written to `data/raw_dbt/`
 
 It then compares each pair exactly: same columns, order and dtypes, rows sorted by
 key, every value equal (two nulls count as equal). Floats are read with
@@ -54,19 +57,20 @@ reported 1 mismatching row and `PARITY: FAIL`. Restoring the file gave
 - The 3 extra rows in `conversion_rate_by_source.csv` compared with
   `traffic_by_source.csv` are source/medium/day combinations with events but no
   `session_start`. The legacy conversion query has no `WHERE`, so it emits them
-  with `sessions = 0` and a null `conversion_rate`. The dbt marts keep every
+  with `users = 0` and a null `conversion_rate`. The dbt marts keep every
   event so that they reproduce these rows.
-- The legacy columns `sessions`, `total_sessions` and `direct_sessions` count
-  distinct users with a `session_start`, not sessions. The marts call them
-  `users`, `total_users` and `direct_users`. The dbt extract maps them back to
-  the legacy names so the detectors and tests stay unchanged.
+- `users`, `total_users` and `direct_users` count distinct users with a
+  `session_start`, not sessions. Before the rename they were called
+  `sessions`, `total_sessions` and `direct_sessions`. The rename changed no
+  value: before and after, the raw and processed CSVs match row for row and
+  the alerts are identical (ignoring `alert_id`).
 
 ## Re-run
 
-```bash
-dbt build --project-dir dbt --profiles-dir dbt
-python scripts/parity_check.py                 # extract both modes, compare
-python scripts/parity_check.py --skip-extract  # compare existing files only
+```powershell
+.\venv\Scripts\dbt.exe build --project-dir dbt --profiles-dir dbt
+.\venv\Scripts\python.exe scripts\parity_check.py                 # extract both modes, compare
+.\venv\Scripts\python.exe scripts\parity_check.py --skip-extract  # compare existing files only
 ```
 
 Exit code 0 means PASS.

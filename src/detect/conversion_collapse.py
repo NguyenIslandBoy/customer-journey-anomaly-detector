@@ -6,7 +6,7 @@ PROCESSED_DIR = Path(__file__).parent.parent.parent / "data" / "processed"
 ROLLING_WINDOW         = 14    # days of history to build baseline
 DROP_THRESHOLD         = 0.60  # 60% relative drop from baseline triggers alert
 MIN_ABS_CVR_DROP       = 0.01  # minimum absolute CVR drop (1 percentage point)
-MIN_SESSIONS_ON_DAY    = 30    # ignore low-traffic days
+MIN_USERS_ON_DAY       = 30    # ignore low-traffic days
 MIN_BASELINE_CVR       = 0.001 # ignore sources with near-zero baseline CVR
 
 def detect_conversion_collapses(df: pd.DataFrame = None) -> list[dict]:
@@ -55,7 +55,7 @@ def detect_conversion_collapses(df: pd.DataFrame = None) -> list[dict]:
         flagged = group[
             (group["relative_drop"] > DROP_THRESHOLD) &
             (group["abs_cvr_drop"] >= MIN_ABS_CVR_DROP) &
-            (group["sessions"] >= MIN_SESSIONS_ON_DAY)
+            (group["users"] >= MIN_USERS_ON_DAY)
         ]
 
         for _, row in flagged.iterrows():

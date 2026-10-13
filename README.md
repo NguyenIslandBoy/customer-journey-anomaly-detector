@@ -19,8 +19,8 @@ analytics team:
 | Conversion Collapse | User conversion rate drop vs rolling baseline | Relative drop threshold (60%, min 1pp absolute) |
 | Untagged Surge | Share of users with acquisition medium `(none)` spikes | Rolling Z-score (21-day, 2.5σ) |
 
-The pipeline's columns are called `sessions`, but they count **users**, and
-source/medium is GA4's user-level acquisition field, not the session's
+Volumes are **users** (distinct users with a `session_start`), not sessions,
+and source/medium is GA4's user-level acquisition field, not the session's
 source. See [Metric definitions](#metric-definitions).
 
 ## Architecture
@@ -124,10 +124,10 @@ Copy-Item .env.example .env
 ## Detection Logic
 
 ### Traffic Spike
-Computes a 14-day rolling mean and standard deviation of daily users (the `sessions` column) per acquisition source/medium. Flags days where the Z-score exceeds 3.0. A minimum rolling std of 1.0 prevents false positives on near-flat series.
+Computes a 14-day rolling mean and standard deviation of daily users per acquisition source/medium. Flags days where the Z-score exceeds 3.0. A minimum rolling std of 1.0 prevents false positives on near-flat series.
 
 ### Conversion Collapse
-Computes a 14-day rolling mean of the user conversion rate (purchasers / users) per acquisition source/medium. Flags days where the relative drop from baseline exceeds 60% AND the absolute drop exceeds 1 percentage point. Minimum 30 users (the `sessions` column) required on the flagged day to exclude noise from low-traffic sources.
+Computes a 14-day rolling mean of the user conversion rate (purchasers / users) per acquisition source/medium. Flags days where the relative drop from baseline exceeds 60% AND the absolute drop exceeds 1 percentage point. Minimum 30 users required on the flagged day to exclude noise from low-traffic sources.
 
 ### Untagged Surge
 Computes the daily site-wide share of users with a `session_start` whose acquisition medium is `(none)`. Applies a 21-day rolling Z-score with a lower threshold of 2.5σ - tracking failures are operationally urgent, so sensitivity is deliberately higher.
@@ -156,7 +156,7 @@ flowchart LR
     ch["mart_channel_performance_daily<br/>(table)"]
     tq["mart_tracking_quality_daily<br/>(table)"]
     ext["src/extract.py --source dbt"]
-    csv["data/raw/*.csv<br/>legacy columns"]
+    csv["data/raw/*.csv<br/>same columns as --source sql"]
     pipe["process → detect → alert"]
     src --> stg --> ch & tq --> ext --> csv --> pipe
 ```
@@ -220,14 +220,19 @@ The public sample does not change, so the marts only need building once.
 
 | Pipeline name (CSVs, detectors) | dbt mart name | What it actually counts |
 |---|---|---|
-| `sessions` | `users` | Distinct `user_pseudo_id` with a `session_start` that day, per source/medium. **Users, not sessions.** |
+| `users` | `users` | Distinct `user_pseudo_id` with a `session_start` that day, per source/medium. **Users, not sessions.** |
 | *(none)* | `session_count` | Distinct `user_pseudo_id` + `ga_session_id` with a `session_start`. True sessions. Summed over all rows, 2.3% higher than `users` (354,857 vs 346,808). |
 | `purchasers` | `purchasers` | Distinct users with a `purchase` event. |
 | `conversion_rate` | `user_conversion_rate` | `purchasers / users`; empty when `users` is 0. A user conversion rate, not a session conversion rate. |
-| `total_sessions` | `total_users` | Distinct users with a `session_start` that day, site-wide. |
-| `direct_sessions` | `direct_users` | Of those, users with acquisition medium `(none)`. |
+| `total_users` | `total_users` | Distinct users with a `session_start` that day, site-wide. |
+| `direct_users` | `direct_users` | Of those, users with acquisition medium `(none)`. |
 | `direct_share` | `direct_share` | `direct_users / total_users`. |
 | `source`, `medium` | `source`, `medium` | GA4 `traffic_source.source/medium`. Google documents these as the source that **first acquired the user**, not the session's source, so all channel figures here are acquisition-based. They are also not stable per user in this sample: on all 92 days, users summed across source/medium exceed the site total (by up to 696 a day), so some users appear under more than one source on the same day. |
+
+Until 2026-10-13 the pipeline named `users`, `total_users` and `direct_users`
+`sessions`, `total_sessions` and `direct_sessions`. Only the names changed; the
+values and the alerts are identical. CSVs or alert files produced before then
+use the old column names.
 
 Values to read with care:
 
@@ -266,7 +271,7 @@ Values to read with care:
 ## Tests
 
 39 tests, none of which touch the network: 7 for the CLI flags
-(`tests/test_cli.py`), 10 for the extract modes and the legacy column
+(`tests/test_cli.py`), 10 for the extract modes and the CSV column
 contract (`tests/test_extract_modes.py`, mocked BigQuery client), and 22 for
 the detectors. Each detector is tested with:
 - Stable series producing zero alerts

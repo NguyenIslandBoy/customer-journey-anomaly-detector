@@ -3,7 +3,7 @@ SELECT
     traffic_source.source     AS source,
     traffic_source.medium     AS medium,
     COUNT(DISTINCT CASE WHEN event_name = 'session_start'
-          THEN user_pseudo_id END)                          AS sessions,
+          THEN user_pseudo_id END)                          AS users,
     COUNT(DISTINCT CASE WHEN event_name = 'purchase'
           THEN user_pseudo_id END)                          AS purchasers,
     SAFE_DIVIDE(

@@ -31,8 +31,9 @@ models:
           - not_null
       - name: users
         description: >
-          Distinct user_pseudo_id with a session_start. This is a user count;
-          it is what the legacy pipeline calls "sessions".
+          Distinct user_pseudo_id with a session_start. A user count, not
+          sessions; the pipeline's users column (named "sessions" before
+          2026-10-13).
       - name: session_count
         description: Distinct session_key with a session_start. True sessions.
       - name: purchasers
@@ -59,9 +60,9 @@ models:
         data_tests:
           - not_null
       - name: total_users
-        description: Distinct users with a session_start. The legacy "total_sessions".
+        description: Distinct users with a session_start. The pipeline's total_users (formerly "total_sessions").
       - name: direct_users
-        description: Distinct session_start users with acquisition medium '(none)'. The legacy "direct_sessions".
+        description: Distinct session_start users with acquisition medium '(none)'. The pipeline's direct_users (formerly "direct_sessions").
       - name: direct_share
         description: direct_users / total_users.
         data_tests:

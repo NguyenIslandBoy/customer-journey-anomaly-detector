@@ -3,15 +3,15 @@ import pytest
 from src.detect.conversion_collapse import detect_conversion_collapses, _build_alert
 
 
-def _base_cvr_series(cvr: float = 0.05, sessions: int = 200, days: int = 40) -> pd.DataFrame:
+def _base_cvr_series(cvr: float = 0.05, users: int = 200, days: int = 40) -> pd.DataFrame:
     """Generate a stable conversion rate series for one source/medium."""
     dates = pd.date_range("2021-01-01", periods=days, freq="D")
-    purchasers = [int(sessions * cvr)] * days
+    purchasers = [int(users * cvr)] * days
     return pd.DataFrame({
         "event_date":      dates,
         "source":          "google",
         "medium":          "organic",
-        "sessions":        sessions,
+        "users":           users,
         "purchasers":      purchasers,
         "conversion_rate": cvr,
     })
@@ -26,7 +26,7 @@ def test_no_alerts_on_stable_series():
 
 def test_detects_known_collapse():
     """A CVR dropping to near zero on day 25 should be flagged."""
-    df = _base_cvr_series(cvr=0.05, sessions=200, days=40)
+    df = _base_cvr_series(cvr=0.05, users=200, days=40)
     df.loc[df.index == 24, "conversion_rate"] = 0.001
     alerts = detect_conversion_collapses(df)
     assert len(alerts) >= 1
@@ -34,11 +34,11 @@ def test_detects_known_collapse():
     assert "2021-01-25" in flagged_dates    
 
 
-def test_low_session_day_not_flagged():
-    """Collapse on a day with fewer than MIN_SESSIONS should not be flagged."""
-    df = _base_cvr_series(cvr=0.05, sessions=200, days=40)
+def test_low_user_day_not_flagged():
+    """Collapse on a day with fewer than MIN_USERS should not be flagged."""
+    df = _base_cvr_series(cvr=0.05, users=200, days=40)
     df.loc[df.index == 24, "conversion_rate"] = 0.001
-    df.loc[df.index == 24, "sessions"] = 10  # below threshold
+    df.loc[df.index == 24, "users"] = 10  # below threshold
     alerts = detect_conversion_collapses(df)
     flagged_dates = [a["detected_at"] for a in alerts]
     assert "2021-01-25" not in flagged_dates
@@ -46,7 +46,7 @@ def test_low_session_day_not_flagged():
 
 def test_near_zero_baseline_cvr_skipped():
     """Sources with near-zero baseline CVR should be skipped entirely."""
-    df = _base_cvr_series(cvr=0.0001, sessions=200, days=40)
+    df = _base_cvr_series(cvr=0.0001, users=200, days=40)
     alerts = detect_conversion_collapses(df)
     assert len(alerts) == 0
 
@@ -58,7 +58,7 @@ def test_severity_high():
         "conversion_rate":  0.01,
         "rolling_mean_cvr": 0.05,
         "relative_drop":    0.80,
-        "sessions":         200,
+        "users":            200,
     })
     alert = _build_alert(row, source="google", medium="organic")
     assert alert["severity"] == "high"  
@@ -72,7 +72,7 @@ def test_severity_medium():
         "conversion_rate":  0.02,
         "rolling_mean_cvr": 0.05,
         "relative_drop":    0.60,
-        "sessions":         200,
+        "users":            200,
     })
     alert = _build_alert(row, source="google", medium="organic")
     assert alert["severity"] == "medium"
@@ -80,7 +80,7 @@ def test_severity_medium():
 
 def test_alert_schema():
     """Every alert must contain all required keys with correct types."""
-    df = _base_cvr_series(cvr=0.05, sessions=200, days=40)
+    df = _base_cvr_series(cvr=0.05, users=200, days=40)
     df.loc[df.index == 24, "conversion_rate"] = 0.001
     alerts = detect_conversion_collapses(df)
     assert len(alerts) >= 1
@@ -99,7 +99,7 @@ def test_alert_schema():
 
 def test_no_alerts_before_window_complete():
     """No alerts should fire before the 14-day rolling window is complete."""
-    df = _base_cvr_series(cvr=0.05, sessions=200, days=20)
+    df = _base_cvr_series(cvr=0.05, users=200, days=20)
     df.loc[df.index == 9, "conversion_rate"] = 0.001  # day 10, inside window
     alerts = detect_conversion_collapses(df)
     flagged_dates = [a["detected_at"] for a in alerts]
