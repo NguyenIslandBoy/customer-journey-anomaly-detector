@@ -1,0 +1,23 @@
+name: cja
+version: 1.0.0
+config-version: 2
+profile: cja
+
+model-paths: ["models"]
+macro-paths: ["macros"]
+test-paths: ["tests"]
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+models:
+  cja:
+    staging:
+      +materialized: view
+    marts:
+      +materialized: table
+
+vars:
+  # Shard range (YYYYMMDD) read from the GA4 wildcard table. Defaults cover
+  # the whole public sample; narrow them to cut scan cost.
+  start_date: "20201101"
+  end_date: "20210131"

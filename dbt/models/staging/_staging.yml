@@ -1,0 +1,59 @@
+version: 2
+
+models:
+  - name: stg_ga4_events
+    description: >
+      One row per GA4 event across all event names, limited to shards between
+      vars start_date and end_date. Source and medium are renamed to
+      acquisition_source / acquisition_medium because the GA4 export's
+      traffic_source record is first-user acquisition, not session source.
+    columns:
+      - name: event_date
+        description: Event date, parsed from the YYYYMMDD string.
+        data_tests:
+          - not_null
+      - name: event_timestamp
+        description: Event time in microseconds since epoch (UTC).
+      - name: event_name
+        description: GA4 event name. The accepted list is every name seen in the sample.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values:
+                  - add_payment_info
+                  - add_shipping_info
+                  - add_to_cart
+                  - begin_checkout
+                  - click
+                  - first_visit
+                  - page_view
+                  - purchase
+                  - scroll
+                  - select_item
+                  - select_promotion
+                  - session_start
+                  - user_engagement
+                  - view_item
+                  - view_item_list
+                  - view_promotion
+                  - view_search_results
+      - name: user_pseudo_id
+        description: Pseudonymous device/browser id. Counting it distinct counts users, not sessions.
+        data_tests:
+          - not_null
+      - name: ga_session_id
+        description: Session id from event_params (int_value). Unique per user, not globally.
+      - name: session_key
+        description: user_pseudo_id || '-' || ga_session_id. Globally unique session identifier.
+        data_tests:
+          - not_null
+      - name: acquisition_source
+        description: traffic_source.source. First-user acquisition source, not session source.
+      - name: acquisition_medium
+        description: traffic_source.medium. First-user acquisition medium, not session medium.
+      - name: transaction_id
+        description: ecommerce.transaction_id. Expected only on purchase events.
+      - name: purchase_revenue
+        description: ecommerce.purchase_revenue, in the transaction currency.
+      - name: purchase_revenue_in_usd
+        description: ecommerce.purchase_revenue_in_usd.

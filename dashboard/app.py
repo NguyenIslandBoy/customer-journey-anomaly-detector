@@ -209,7 +209,8 @@ with tab1:
 with tab2:
     st.header("Traffic Spike Detection")
     st.caption(
-        "Daily session volume per source/medium with 14-day rolling baseline. "
+        "Daily users (the pipeline's `sessions` column) per acquisition source/medium "
+        "with 14-day rolling baseline. "
         "Flagged days exceed 3 standard deviations above the rolling mean."
     )
 
@@ -227,7 +228,7 @@ with tab2:
 
     sources = sorted(traffic_df["source"].unique().tolist())
     selected_source = st.selectbox(
-        "Select Source / Medium",
+        "Select Acquisition Source / Medium",
         options=traffic_df.groupby(["source", "medium"])
                           .size().reset_index()[["source", "medium"]]
                           .apply(lambda r: f"{r['source']} / {r['medium']}", axis=1)
@@ -260,12 +261,12 @@ with tab2:
 
     fig = go.Figure()
 
-    # Session volume line
+    # User volume line
     fig.add_trace(go.Scatter(
         x=series["event_date"],
         y=series["sessions"],
         mode="lines",
-        name="Daily Sessions",
+        name="Daily Users",
         line=dict(color="#636EFA", width=2),
     ))
 
@@ -290,9 +291,9 @@ with tab2:
         ))
 
     fig.update_layout(
-        title=f"Daily Sessions — {src} / {med}",
+        title=f"Daily Users — {src} / {med}",
         xaxis_title="Date",
-        yaxis_title="Sessions",
+        yaxis_title="Users",
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
         legend=dict(orientation="h", yanchor="bottom", y=1.02),
@@ -320,7 +321,8 @@ with tab2:
 with tab3:
     st.header("Conversion Rate Collapse Detection")
     st.caption(
-        "Daily conversion rate per source/medium with 14-day rolling baseline. "
+        "Daily user conversion rate (purchasers / users) per acquisition source/medium "
+        "with 14-day rolling baseline. "
         "Flagged days show a relative drop exceeding 60% against the rolling mean, "
         "with a minimum absolute drop of 1 percentage point."
     )
@@ -338,7 +340,7 @@ with tab3:
     st.markdown("---")
 
     selected_cvr_source = st.selectbox(
-        "Select Source / Medium",
+        "Select Acquisition Source / Medium",
         options=cvr_df.groupby(["source", "medium"])
                       .size().reset_index()[["source", "medium"]]
                       .apply(lambda r: f"{r['source']} / {r['medium']}", axis=1)
@@ -376,7 +378,7 @@ with tab3:
         x=cvr_series["event_date"],
         y=(cvr_series["conversion_rate"] * 100).round(3),
         mode="lines",
-        name="Daily CVR %",
+        name="Daily User CVR %",
         line=dict(color="#00CC96", width=2),
     ))
 
@@ -401,9 +403,9 @@ with tab3:
         ))
 
     fig2.update_layout(
-        title=f"Conversion Rate (%) — {src_c} / {med_c}",
+        title=f"User Conversion Rate (%) — {src_c} / {med_c}",
         xaxis_title="Date",
-        yaxis_title="Conversion Rate (%)",
+        yaxis_title="User Conversion Rate (%)",
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
         legend=dict(orientation="h", yanchor="bottom", y=1.02),
@@ -438,7 +440,8 @@ with tab3:
 with tab4:
     st.header("Untagged Traffic Surge Detection")
     st.caption(
-        "Daily share of direct/(none) traffic across the site with 21-day rolling baseline. "
+        "Daily site-wide share of users whose acquisition medium is (none), "
+        "with 21-day rolling baseline. "
         "A spike indicates potential UTM stripping, untagged campaign launches, "
         "or large email sends without tracking parameters."
     )

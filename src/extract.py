@@ -9,10 +9,19 @@ load_dotenv()
 
 PROJECT_ID = os.getenv("BQ_PROJECT_ID")
 CREDENTIALS_PATH = os.getenv("BQ_CREDENTIALS_PATH")
+DBT_DATASET = os.getenv("DBT_DATASET", "cja_dbt")
 
 SQL_DIR = Path(__file__).parent.parent / "sql"
 RAW_DIR = Path(__file__).parent.parent / "data" / "raw"
 RAW_DIR.mkdir(parents=True, exist_ok=True)
+
+SOURCES = ("sql", "dbt")
+
+LEGACY_QUERIES = {
+    "traffic_by_source":         "traffic_by_source.sql",
+    "conversion_rate_by_source": "conversion_rate_by_source.sql",
+    "direct_untagged_traffic":   "direct_untagged_traffic.sql",
+}
 
 
 def get_client() -> bigquery.Client:
@@ -35,20 +44,95 @@ def run_query(client: bigquery.Client, sql: str) -> pd.DataFrame:
     return query_job.to_dataframe()
 
 
-def extract_all() -> None:
-    client = get_client()
+def _yyyymmdd(dates: pd.Series) -> pd.Series:
+    """DATE column -> 'YYYYMMDD' strings, the legacy format process.py parses."""
+    return pd.to_datetime(dates).dt.strftime("%Y%m%d")
 
-    queries = {
-        "traffic_by_source":         "traffic_by_source.sql",
-        "conversion_rate_by_source": "conversion_rate_by_source.sql",
-        "direct_untagged_traffic":   "direct_untagged_traffic.sql",
+
+def legacy_frames_from_marts(
+    channel: pd.DataFrame, tracking: pd.DataFrame
+) -> dict[str, pd.DataFrame]:
+    """
+    Rebuild the three legacy extracts from the dbt marts, with the legacy
+    column names, order and event_date format.
+
+    The marts use honest names. The pipeline keeps the legacy ones so the
+    detectors, tests and dashboard stay untouched: users is renamed to
+    "sessions", although it counts distinct users with a session_start,
+    not sessions (the marts' session_count is the real session count).
+    """
+    channel = channel.assign(event_date=_yyyymmdd(channel["event_date"])).rename(
+        columns={"users": "sessions", "user_conversion_rate": "conversion_rate"}
+    )
+    tracking = tracking.assign(event_date=_yyyymmdd(tracking["event_date"])).rename(
+        columns={"total_users": "total_sessions", "direct_users": "direct_sessions"}
+    )
+
+    # Legacy conversion SQL has no WHERE, so it keeps rows with sessions = 0
+    # (events but no session_start) and a null rate. Legacy traffic SQL reads
+    # session_start events only, so those rows never appear there.
+    conversion = channel[
+        ["event_date", "source", "medium", "sessions", "purchasers", "conversion_rate"]
+    ].sort_values(["event_date", "source", "medium"])
+    traffic = channel.loc[
+        channel["sessions"] > 0, ["event_date", "source", "medium", "sessions"]
+    ].sort_values(
+        ["event_date", "sessions", "source", "medium"],
+        ascending=[True, False, True, True],
+    )
+    direct = tracking[
+        ["event_date", "total_sessions", "direct_sessions", "direct_share"]
+    ].sort_values("event_date")
+
+    return {
+        "traffic_by_source":         traffic.reset_index(drop=True),
+        "conversion_rate_by_source": conversion.reset_index(drop=True),
+        "direct_untagged_traffic":   direct.reset_index(drop=True),
     }
 
-    for name, sql_file in queries.items():
+
+def _extract_sql(client: bigquery.Client) -> dict[str, pd.DataFrame]:
+    frames = {}
+    for name, sql_file in LEGACY_QUERIES.items():
         print(f"  Running: {sql_file}")
-        sql = load_sql(sql_file)
-        df = run_query(client, sql)
-        out_path = RAW_DIR / f"{name}.csv"
+        frames[name] = run_query(client, load_sql(sql_file))
+    return frames
+
+
+def _extract_dbt(client: bigquery.Client) -> dict[str, pd.DataFrame]:
+    dataset = f"{PROJECT_ID}.{DBT_DATASET}"
+    print(f"  Reading: {dataset}.mart_channel_performance_daily")
+    channel = run_query(client, f"""
+        SELECT event_date, source, medium, users, purchasers, user_conversion_rate
+        FROM `{dataset}.mart_channel_performance_daily`
+    """)
+    print(f"  Reading: {dataset}.mart_tracking_quality_daily")
+    tracking = run_query(client, f"""
+        SELECT event_date, total_users, direct_users, direct_share
+        FROM `{dataset}.mart_tracking_quality_daily`
+    """)
+    return legacy_frames_from_marts(channel, tracking)
+
+
+def extract_all(source: str = "sql", out_dir: Path = RAW_DIR) -> None:
+    """
+    Write the three raw CSVs to out_dir.
+
+    Args:
+        source:  "sql" runs the legacy queries in sql/. "dbt" reads the dbt
+                 marts in DBT_DATASET (build them first with dbt build).
+        out_dir: target directory, data/raw/ by default.
+    """
+    if source not in SOURCES:
+        raise ValueError(f"Unknown source {source!r}; expected one of {SOURCES}")
+
+    client = get_client()
+    frames = _extract_sql(client) if source == "sql" else _extract_dbt(client)
+
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    for name, df in frames.items():
+        out_path = out_dir / f"{name}.csv"
         df.to_csv(out_path, index=False)
         print(f"  Saved:   {out_path}  ({len(df)} rows)")
 

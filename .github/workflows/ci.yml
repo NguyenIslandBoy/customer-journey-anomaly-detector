@@ -24,3 +24,31 @@ jobs:
 
       - name: Run tests
         run: pytest tests/ -v
+
+  dbt-parse:
+    runs-on: ubuntu-latest
+
+    # Placeholders only. dbt parse renders profiles.yml but never connects to
+    # BigQuery, so no GCP secret is needed (verified with no credentials).
+    env:
+      BQ_PROJECT_ID: ci-placeholder
+      BQ_CREDENTIALS_PATH: /tmp/ci-placeholder-keyfile.json
+      DBT_SEND_ANONYMOUS_USAGE_STATS: "false"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dbt
+        run: pip install -r requirements-dbt.txt
+
+      - name: Install dbt packages
+        run: dbt deps --project-dir dbt --profiles-dir dbt
+
+      - name: Parse dbt project
+        run: dbt parse --project-dir dbt --profiles-dir dbt
